@@ -1,6 +1,6 @@
 {
-  "name": "@vizir/idempotent-aws-lambda",
-  "version": "2.0.0",
+  "name": "@natura-pay/idempotent-aws-lambda",
+  "version": "1.0.0",
   "description": "A fast way to turn your aws lambda idempotent.",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -19,9 +19,9 @@
   "keywords": [
     "idempotent aws lambda"
   ],
-  "author": "Vizir Software Studio <contato@vizir.com.br>",
+  "author": "Natura-pay",
   "contributors": [
-    "Tiago de Assis Gonçalves <contato@tiagogoncalves.com.br>"
+    "Rodrigo Pinheiro de Almeida <rpinheiroalmeida@gmail.com>"
   ],
   "license": "MIT",
   "dependencies": {
@@ -48,12 +48,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vizir/idempotent-aws-lambda.git"
+    "url": "git+https://github.com/natura-pay/idempotent-aws-lambda.git"
   },
   "bugs": {
-    "url": "https://github.com/vizir/idempotent-aws-lambda/issues"
+    "url": "https://github.com/natura-pay/idempotent-aws-lambda/issues"
   },
-  "homepage": "https://github.com/vizir/idempotent-aws-lambda#readme",
+  "homepage": "https://github.com/natura-pay/idempotent-aws-lambda#readme",
   "directories": {
     "example": "examples",
     "test": "test"

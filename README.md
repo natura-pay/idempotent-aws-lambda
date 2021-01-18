@@ -1,9 +1,11 @@
-# @vizir/idempotent-aws-lambda
+# @natura-pay/idempotent-aws-lambda
+
+**This library is a fork from https://github.com/Vizir/idempotent-aws-lambda**
 
 A fast way to turn your aws lambda function idempotent.
 
-[![npm version](https://badge.fury.io/js/%40vizir%2Fidempotent-aws-lambda.svg)](https://badge.fury.io/js/%40vizir%2Fidempotent-aws-lambda)
-![Node.js CI](https://github.com/Vizir/idempotent-aws-lambda/workflows/Node.js%20CI/badge.svg?branch=master)
+[![npm version](https://badge.fury.io/js/%40natura-pay%2Fidempotent-aws-lambda.svg)](https://badge.fury.io/js/%natura-pay%2Fidempotent-aws-lambda)
+![Node.js CI](https://github.com/natura-pay/idempotent-aws-lambda/workflows/Node.js%20CI/badge.svg?branch=master)
 
 ## Motivation
 
@@ -15,7 +17,7 @@ function isn't idempotent. You can check more details into [aws knowledge center
 ## Installation
 
 ```sh
-$ npm install @vizir/idempotent-aws-lambda
+$ npm install @natura-pay/idempotent-aws-lambda
 ```
 
 ## Usage
