@@ -16,6 +16,9 @@
     "test": "jest --config ./jest.config.json",
     "test:watch": "jest --config ./jest.config.json --watch"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "idempotent aws lambda"
   ],
