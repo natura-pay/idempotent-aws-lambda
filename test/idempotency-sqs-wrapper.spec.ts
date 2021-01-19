@@ -104,7 +104,7 @@ describe("idempotency-sqs-wrapper", () => {
       // Then
       expect(internalHandler).toHaveBeenCalledWith(expectedEvent, context);
       expect(mockIsProcessing).toBeCalledWith(messageId);
-      expect(mockDeleteFunction).not.toBeCalledWith({
+      expect(mockDeleteFunction).toBeCalledWith({
         QueueUrl: endpointSQS,
         ReceiptHandle: receiptHandle,
       });
