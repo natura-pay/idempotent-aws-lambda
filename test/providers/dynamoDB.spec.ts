@@ -1,128 +1,190 @@
-import faker from "faker";
-import nock from "nock";
 import { DynamoDB } from "../../src/providers/dynamoDB";
+import {
+  mockDynamoDBPromise,
+  mockGetFunction,
+  mockTransactWriteFunction,
+  mockPutFunction,
+} from "../../__mocks__/aws-sdk/clients/dynamodb";
 
 describe("DynamoDB", () => {
   const mockNow = Date.now();
 
   beforeEach(() => {
     jest.spyOn(Date, "now").mockReturnValue(mockNow);
-    nock.disableNetConnect();
-  });
 
-  afterEach(() => {
-    nock.cleanAll();
-    nock.enableNetConnect();
+    mockDynamoDBPromise.mockClear();
+    mockGetFunction.mockClear();
+    mockTransactWriteFunction.mockClear();
   });
 
   describe("fetch", () => {
     it("Should return the item when exists", async () => {
       // Given
-      const endpoint: string = faker.internet.url();
-      const word: string = faker.random.word();
-      nock(endpoint)
-        .post("/")
-        .reply(200, {
-          Item: {
-            result: {
-              M: {
-                word: {
-                  S: word,
-                },
-              },
-            },
-          },
-        });
+      const endpoint: string = "http://localhost";
+      const word: string = "aws-region";
+
       const dynamoDB = new DynamoDB({
-        endpoint,
-        region: faker.random.word(),
-        ttl: faker.random.number(),
-        tableName: faker.random.word(),
+        endpoint: endpoint,
+        region: "aws-region",
+        ttl: 123456789,
+        tableName: "aws-region",
       });
-      const messageId = faker.random.uuid();
-      const expectedResult = { word };
+      const messageId = "uuid-v4";
+      const expectedResult = { word: word };
+      mockDynamoDBPromise.mockResolvedValue({
+        Item: {
+          result: expectedResult,
+        },
+      });
 
       // When
       const result: any = await dynamoDB.fetch(messageId);
 
       // Then
       expect(result).toStrictEqual(expectedResult);
+      expect(mockGetFunction).toBeCalledWith({
+        Key: {
+          messageId: messageId,
+        },
+        TableName: "aws-region",
+      });
     });
 
     it("Should return undefined when the item doesn't exist", async () => {
       // Given
-      const endpoint: string = faker.internet.url();
-      nock(endpoint).post("/").reply(200);
+      const endpoint: string = "http://localhost";
       const dynamoDB = new DynamoDB({
-        endpoint,
-        region: faker.random.word(),
-        ttl: faker.random.number(),
-        tableName: faker.random.word(),
+        endpoint: endpoint,
+        region: "aws-region",
+        ttl: 123456789,
+        tableName: "aws-region",
       });
-      const messageId = faker.random.uuid();
+      const messageId = "uuid-v4";
+      mockDynamoDBPromise.mockResolvedValue({
+        Item: {
+          result: undefined,
+        },
+      });
 
       // When
       const result = await dynamoDB.fetch(messageId);
 
       // Then
       expect(result).toBeUndefined();
+      expect(mockGetFunction).toBeCalledWith({
+        Key: {
+          messageId: messageId,
+        },
+        TableName: "aws-region",
+      });
     });
   });
 
   describe("isProcessing", () => {
     it("Should return false when the message isn't processing", async () => {
       // Given
-      const endpoint: string = faker.internet.url();
-      nock(endpoint).post("/").reply(200);
+      const endpoint: string = "http://localhost";
+      const now = Math.floor(mockNow / 1000);
+
       const dynamoDB = new DynamoDB({
-        endpoint,
-        region: faker.random.word(),
-        ttl: faker.random.number(),
-        tableName: faker.random.word(),
+        endpoint: endpoint,
+        region: "aws-region",
+        ttl: 10,
+        tableName: "aws-region",
       });
-      const messageId = faker.random.uuid();
+      const messageId = "uuid-v4";
 
       // When
       const result = await dynamoDB.isProcessing(messageId);
 
       // Then
       expect(result).toBeFalsy();
+      expect(mockDynamoDBPromise).toBeCalledTimes(1);
+      expect(mockTransactWriteFunction).toBeCalledWith({
+        ClientRequestToken: messageId,
+        TransactItems: [
+          {
+            Put: {
+              ConditionExpression:
+                "attribute_not_exists(messageId) or (#ttl < :validTime)",
+              ExpressionAttributeNames: {
+                "#ttl": "ttl",
+              },
+              ExpressionAttributeValues: {
+                ":validTime": now,
+              },
+              Item: {
+                messageId: messageId,
+                ttl: now + 10,
+              },
+              TableName: "aws-region",
+            },
+          },
+        ],
+      });
     });
 
-    it("Should return true when the message is processing", async () => {
+    it("Should return true when the message is in processing", async () => {
       // Given
-      const endpoint: string = faker.internet.url();
-      nock(endpoint).post("/").reply(400, undefined, {
-        "x-amzn-errortype": "ConditionalCheckFailedException",
-      });
+      const endpoint: string = "http://localhost";
+      const now = Math.floor(Date.now() / 1000);
+
       const dynamoDB = new DynamoDB({
-        endpoint,
-        region: faker.random.word(),
-        ttl: faker.random.number(),
-        tableName: faker.random.word(),
+        endpoint: endpoint,
+        region: "aws-region",
+        ttl: 10,
+        tableName: "aws-region",
       });
-      const messageId = faker.random.uuid();
+      const messageId = "uuid-v4";
+      mockDynamoDBPromise.mockRejectedValue({
+        name: "ConditionalCheckFailed",
+        message:
+          "Transaction cancelled, please refer cancellation reasons for specific reasons [ConditionalCheckFailed]",
+      });
 
       // When
       const result = await dynamoDB.isProcessing(messageId);
 
       // Then
       expect(result).toBeTruthy();
+      expect(mockDynamoDBPromise).toBeCalledTimes(1);
+      expect(mockTransactWriteFunction).toBeCalledWith({
+        ClientRequestToken: "uuid-v4",
+        TransactItems: [
+          {
+            Put: {
+              ConditionExpression:
+                "attribute_not_exists(messageId) or (#ttl < :validTime)",
+              ExpressionAttributeNames: {
+                "#ttl": "ttl",
+              },
+              ExpressionAttributeValues: {
+                ":validTime": now,
+              },
+              Item: {
+                messageId: "uuid-v4",
+                ttl: now + 10,
+              },
+              TableName: "aws-region",
+            },
+          },
+        ],
+      });
     });
 
     it("Should thrown an error when some internal error happen", async (): Promise<void> => {
       // Given
-      const endpoint: string = faker.internet.url();
-      nock(endpoint).post("/").reply(400, undefined, {
-        "x-amzn-errortype": "Other error",
-      });
+      const endpoint: string = "http://localhost";
       const dynamoDB = new DynamoDB({
-        endpoint,
-        region: faker.random.word(),
-        ttl: faker.random.number(),
-        tableName: faker.random.word(),
+        endpoint: endpoint,
+        region: "aws-region",
+        ttl: 123456789,
+        tableName: "aws-region",
       });
-      const messageId = faker.random.uuid();
+      const messageId = "uuid-v4";
+      mockTransactWriteFunction.mockRejectedValue(
+        new Error("unexptected error")
+      );
 
       // When
       const promise = dynamoDB.isProcessing(messageId);
@@ -135,45 +197,36 @@ describe("DynamoDB", () => {
   describe("update", () => {
     it("Should update the item with successfully", async (): Promise<void> => {
       // Given
-      const endpoint: string = faker.internet.url();
-      const messageId = faker.random.uuid();
-      const ttl = faker.random.number();
-      const creationTime = Math.floor(Date.now() / 1000);
-      const word = faker.random.word();
-      const tableName = faker.random.word();
-      nock(endpoint)
-        .post("/", {
-          Item: {
-            messageId: {
-              S: messageId,
-            },
-            ttl: {
-              N: String(creationTime + ttl),
-            },
-            result: {
-              M: {
-                word: {
-                  S: word,
-                },
-              },
-            },
-          },
-          TableName: tableName,
-        })
-        .reply(200);
+      const endpoint: string = "http://localhost";
+      const messageId = "uuid-v4";
+      const ttl = 10;
+      const now = Math.floor(Date.now() / 1000);
+      const word = "aws-region";
+      const tableName = "aws-region";
       const dynamoDB = new DynamoDB({
-        endpoint,
-        region: faker.random.word(),
-        ttl,
-        tableName,
+        endpoint: endpoint,
+        region: "aws-region",
+        ttl: ttl,
+        tableName: tableName,
       });
-      const data = { word };
+      const data = { word: word };
 
       // When
       const promise = dynamoDB.update(messageId, data);
 
       // Then
-      return expect(promise).resolves.not.toThrow();
+      expect(promise).resolves.not.toThrow();
+      expect(mockDynamoDBPromise).toBeCalledTimes(1);
+      expect(mockPutFunction).toBeCalledWith({
+        Item: {
+          messageId: "uuid-v4",
+          result: {
+            word: "aws-region",
+          },
+          ttl: now + 10,
+        },
+        TableName: "aws-region",
+      });
     });
   });
 });

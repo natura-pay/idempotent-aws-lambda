@@ -1,5 +1,4 @@
-import AWS from "aws-sdk";
-import { DocumentClient } from "aws-sdk/lib/dynamodb/document_client";
+import { DocumentClient } from "aws-sdk/clients/dynamodb";
 import { Provider } from "./provider";
 
 export interface DynamoDBOptions {
@@ -17,7 +16,7 @@ export class DynamoDB implements Provider {
   private readonly tableName: string;
 
   public constructor(options: DynamoDBOptions) {
-    this.ddb = new AWS.DynamoDB.DocumentClient({
+    this.ddb = new DocumentClient({
       endpoint: options.endpoint,
       region: options.region,
     });
@@ -39,27 +38,39 @@ export class DynamoDB implements Provider {
   public async isProcessing(messageId: string): Promise<boolean> {
     const creationTime = Math.floor(Date.now() / 1000);
     const ttl = creationTime + this.ttl;
-    const validTime = creationTime - this.ttl;
 
     try {
       await this.ddb
-        .put({
-          ConditionExpression:
-            "attribute_not_exists(messageId) or (#ttl < :validTime)",
-          ExpressionAttributeNames: {
-            "#ttl": "ttl",
-          },
-          ExpressionAttributeValues: {
-            ":validTime": validTime,
-          },
-          Item: { messageId: messageId, ttl },
-          TableName: this.tableName,
+        .transactWrite({
+          TransactItems: [
+            {
+              Put: {
+                TableName: this.tableName,
+                Item: {
+                  messageId: messageId,
+                  ttl: ttl,
+                },
+                ConditionExpression:
+                  "attribute_not_exists(messageId) or (#ttl < :validTime)",
+                ExpressionAttributeNames: {
+                  "#ttl": "ttl",
+                },
+                ExpressionAttributeValues: {
+                  ":validTime": creationTime,
+                },
+              },
+            },
+          ],
+          ClientRequestToken: messageId,
         })
         .promise();
-
       return false;
     } catch (error) {
-      if (error.name === "ConditionalCheckFailedException") {
+      if (
+        error.name.indexOf("ConditionalCheckFailed") !== -1 ||
+        error.message.indexOf("ConditionalCheckFailed") !== -1 ||
+        error.code === "IdempotentParameterMismatchException"
+      ) {
         return true;
       }
 

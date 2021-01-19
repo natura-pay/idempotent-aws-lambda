@@ -3,12 +3,34 @@ import faker from "faker";
 import nock from "nock";
 import { idempotencyHttpWrapper, Providers } from "../src";
 
+const mockIsProcessing = jest.fn();
+const mockUpdate = jest.fn();
+const mockFetch = jest.fn();
+
+jest.mock("../src/providers/dynamoDB", () => {
+  return {
+    DynamoDB: jest.fn().mockImplementation(() => {
+      return {
+        isProcessing: mockIsProcessing,
+        update: mockUpdate,
+        fetch: mockFetch,
+      };
+    }),
+  };
+});
+
 describe("idempotency-http-wrapper", () => {
   const mockNow = Date.now();
 
   beforeEach(() => {
     jest.spyOn(Date, "now").mockReturnValue(mockNow);
     nock.disableNetConnect();
+  });
+
+  beforeAll(() => {
+    nock.recorder.rec({
+      output_objects: true,
+    });
   });
 
   afterEach(() => {
@@ -38,34 +60,7 @@ describe("idempotency-http-wrapper", () => {
           from: "requestId",
         },
       });
-      const expectedTtl = String(Math.floor(mockNow / 1000) + ttl);
-      const expectedValidTime = String(Math.floor(mockNow / 1000) - ttl);
-      nock(endpoint)
-        .post("/", {
-          ConditionExpression:
-            "attribute_not_exists(messageId) or (#ttl < :validTime)",
-          ExpressionAttributeNames: {
-            "#ttl": "ttl",
-          },
-          ExpressionAttributeValues: {
-            ":validTime": { N: expectedValidTime },
-          },
-          Item: { messageId: { S: requestId }, ttl: { N: expectedTtl } },
-          TableName: tableName,
-        })
-        .reply(200);
-      nock(endpoint)
-        .post("/", {
-          Item: {
-            messageId: { S: requestId },
-            ttl: { N: expectedTtl },
-            result: {
-              M: { word: { S: result.word } },
-            },
-          },
-          TableName: tableName,
-        })
-        .reply(200);
+
       const event = { requestContext: { requestId } };
       const context = {};
 
@@ -74,6 +69,7 @@ describe("idempotency-http-wrapper", () => {
 
       // Then
       expect(internalHandler).toHaveBeenCalled();
+      expect(mockUpdate).toBeCalledWith(requestId, result);
     });
 
     it("Should extract the ID from header request", async () => {
@@ -98,34 +94,7 @@ describe("idempotency-http-wrapper", () => {
           name: "requestId",
         },
       });
-      const expectedTtl = String(Math.floor(mockNow / 1000) + ttl);
-      const expectedValidTime = String(Math.floor(mockNow / 1000) - ttl);
-      nock(endpoint)
-        .post("/", {
-          ConditionExpression:
-            "attribute_not_exists(messageId) or (#ttl < :validTime)",
-          ExpressionAttributeNames: {
-            "#ttl": "ttl",
-          },
-          ExpressionAttributeValues: {
-            ":validTime": { N: expectedValidTime },
-          },
-          Item: { messageId: { S: requestId }, ttl: { N: expectedTtl } },
-          TableName: tableName,
-        })
-        .reply(200);
-      nock(endpoint)
-        .post("/", {
-          Item: {
-            messageId: { S: requestId },
-            ttl: { N: expectedTtl },
-            result: {
-              M: { word: { S: result.word } },
-            },
-          },
-          TableName: tableName,
-        })
-        .reply(200);
+
       const event = { headers: { requestId }, requestContext: {} };
       const context = {};
 
@@ -134,6 +103,7 @@ describe("idempotency-http-wrapper", () => {
 
       // Then
       expect(internalHandler).toHaveBeenCalled();
+      expect(mockUpdate).toBeCalledWith(requestId, result);
     });
 
     it("Should ignore the idempotency when the header is empty and fallback is disabled", async () => {
@@ -165,6 +135,7 @@ describe("idempotency-http-wrapper", () => {
 
       // Then
       expect(internalHandler).toHaveBeenCalled();
+      expect(mockUpdate).not.toBeCalled();
     });
 
     it("Should apply the default TTL", async () => {
@@ -173,7 +144,6 @@ describe("idempotency-http-wrapper", () => {
       const requestId = faker.random.uuid();
       const result = { word: faker.random.word() };
       const internalHandler = jest.fn().mockReturnValue(result);
-      const defaultTTL = 5;
       const tableName = faker.random.word();
       const handler = idempotencyHttpWrapper({
         handler: internalHandler,
@@ -187,34 +157,7 @@ describe("idempotency-http-wrapper", () => {
           from: "requestId",
         },
       });
-      const expectedTtl = String(Math.floor(mockNow / 1000) + defaultTTL);
-      const expectedValidTime = String(Math.floor(mockNow / 1000) - defaultTTL);
-      nock(endpoint)
-        .post("/", {
-          ConditionExpression:
-            "attribute_not_exists(messageId) or (#ttl < :validTime)",
-          ExpressionAttributeNames: {
-            "#ttl": "ttl",
-          },
-          ExpressionAttributeValues: {
-            ":validTime": { N: expectedValidTime },
-          },
-          Item: { messageId: { S: requestId }, ttl: { N: expectedTtl } },
-          TableName: tableName,
-        })
-        .reply(200);
-      nock(endpoint)
-        .post("/", {
-          Item: {
-            messageId: { S: requestId },
-            ttl: { N: expectedTtl },
-            result: {
-              M: { word: { S: result.word } },
-            },
-          },
-          TableName: tableName,
-        })
-        .reply(200);
+
       const event = { requestContext: { requestId } };
       const context = {};
 
@@ -223,6 +166,7 @@ describe("idempotency-http-wrapper", () => {
 
       // Then
       expect(internalHandler).toHaveBeenCalled();
+      expect(mockUpdate).toBeCalledWith(requestId, result);
     });
 
     it("Should ignore the request when already called using the request id", async () => {
@@ -245,30 +189,8 @@ describe("idempotency-http-wrapper", () => {
           from: "requestId",
         },
       });
-      const expectedTtl = String(Math.floor(mockNow / 1000) + ttl);
-      const expectedValidTime = String(Math.floor(mockNow / 1000) - ttl);
-      nock(endpoint)
-        .post("/", {
-          ConditionExpression:
-            "attribute_not_exists(messageId) or (#ttl < :validTime)",
-          ExpressionAttributeNames: {
-            "#ttl": "ttl",
-          },
-          ExpressionAttributeValues: {
-            ":validTime": { N: expectedValidTime },
-          },
-          Item: { messageId: { S: requestId }, ttl: { N: expectedTtl } },
-          TableName: tableName,
-        })
-        .reply(400, undefined, {
-          "x-amzn-errortype": "ConditionalCheckFailedException",
-        });
-      nock(endpoint)
-        .post("/", {
-          Key: { messageId: { S: requestId } },
-          TableName: tableName,
-        })
-        .reply(200);
+      mockIsProcessing.mockResolvedValue(true);
+
       const event = { requestContext: { requestId } };
       const context = {};
       // When
@@ -276,6 +198,7 @@ describe("idempotency-http-wrapper", () => {
 
       // Then
       expect(internalHandler).not.toHaveBeenCalled();
+      expect(mockFetch).toBeCalledWith(requestId);
     });
 
     it("Should ignore the request when already called using the header id", async () => {
@@ -299,30 +222,8 @@ describe("idempotency-http-wrapper", () => {
           name: "requestId",
         },
       });
-      const expectedTtl = String(Math.floor(mockNow / 1000) + ttl);
-      const expectedValidTime = String(Math.floor(mockNow / 1000) - ttl);
-      nock(endpoint)
-        .post("/", {
-          ConditionExpression:
-            "attribute_not_exists(messageId) or (#ttl < :validTime)",
-          ExpressionAttributeNames: {
-            "#ttl": "ttl",
-          },
-          ExpressionAttributeValues: {
-            ":validTime": { N: expectedValidTime },
-          },
-          Item: { messageId: { S: requestId }, ttl: { N: expectedTtl } },
-          TableName: tableName,
-        })
-        .reply(400, undefined, {
-          "x-amzn-errortype": "ConditionalCheckFailedException",
-        });
-      nock(endpoint)
-        .post("/", {
-          Key: { messageId: { S: requestId } },
-          TableName: tableName,
-        })
-        .reply(200);
+      mockIsProcessing.mockResolvedValue(true);
+
       const event = { headers: { requestId }, requestContext: {} };
       const context = {};
       // When
@@ -330,6 +231,7 @@ describe("idempotency-http-wrapper", () => {
 
       // Then
       expect(internalHandler).not.toHaveBeenCalled();
+      expect(mockFetch).toBeCalledWith(requestId);
     });
 
     it("Should ignore the request when already called using the header id with fallback enabled", async () => {
@@ -354,30 +256,8 @@ describe("idempotency-http-wrapper", () => {
           fallback: true,
         },
       });
-      const expectedTtl = String(Math.floor(mockNow / 1000) + ttl);
-      const expectedValidTime = String(Math.floor(mockNow / 1000) - ttl);
-      nock(endpoint)
-        .post("/", {
-          ConditionExpression:
-            "attribute_not_exists(messageId) or (#ttl < :validTime)",
-          ExpressionAttributeNames: {
-            "#ttl": "ttl",
-          },
-          ExpressionAttributeValues: {
-            ":validTime": { N: expectedValidTime },
-          },
-          Item: { messageId: { S: requestId }, ttl: { N: expectedTtl } },
-          TableName: tableName,
-        })
-        .reply(400, undefined, {
-          "x-amzn-errortype": "ConditionalCheckFailedException",
-        });
-      nock(endpoint)
-        .post("/", {
-          Key: { messageId: { S: requestId } },
-          TableName: tableName,
-        })
-        .reply(200);
+      mockIsProcessing.mockResolvedValue(true);
+
       const event = { headers: {}, requestContext: { requestId } };
       const context = {};
       // When
@@ -385,6 +265,7 @@ describe("idempotency-http-wrapper", () => {
 
       // Then
       expect(internalHandler).not.toHaveBeenCalled();
+      expect(mockFetch).toBeCalledWith(requestId);
     });
   });
 });
