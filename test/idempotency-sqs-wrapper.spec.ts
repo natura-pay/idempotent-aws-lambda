@@ -1,4 +1,4 @@
-/* eslint-disable sonarjs/no-duplicate-string */
+/* eslint-disable */
 import faker = require("faker");
 import { idempotencySQSWrapper } from "../src/idempotency-sqs-wrapper";
 import { mockDeleteFunction } from "../__mocks__/aws-sdk/clients/sqs";

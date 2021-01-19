@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { DynamoDB } from "../../src/providers/dynamoDB";
 import {
   mockDynamoDBPromise,
@@ -20,8 +21,8 @@ describe("DynamoDB", () => {
   describe("fetch", () => {
     it("Should return the item when exists", async () => {
       // Given
-      const endpoint: string = "http://localhost";
-      const word: string = "aws-region";
+      const endpoint = "http://localhost";
+      const word = "aws-region";
 
       const dynamoDB = new DynamoDB({
         endpoint: endpoint,
@@ -52,7 +53,7 @@ describe("DynamoDB", () => {
 
     it("Should return undefined when the item doesn't exist", async () => {
       // Given
-      const endpoint: string = "http://localhost";
+      const endpoint = "http://localhost";
       const dynamoDB = new DynamoDB({
         endpoint: endpoint,
         region: "aws-region",
@@ -83,7 +84,7 @@ describe("DynamoDB", () => {
   describe("isProcessing", () => {
     it("Should return false when the message isn't processing", async () => {
       // Given
-      const endpoint: string = "http://localhost";
+      const endpoint = "http://localhost";
       const now = Math.floor(mockNow / 1000);
 
       const dynamoDB = new DynamoDB({
@@ -126,7 +127,7 @@ describe("DynamoDB", () => {
 
     it("Should return true when the message is in processing", async () => {
       // Given
-      const endpoint: string = "http://localhost";
+      const endpoint = "http://localhost";
       const now = Math.floor(Date.now() / 1000);
 
       const dynamoDB = new DynamoDB({
@@ -174,7 +175,7 @@ describe("DynamoDB", () => {
 
     it("Should thrown an error when some internal error happen", async (): Promise<void> => {
       // Given
-      const endpoint: string = "http://localhost";
+      const endpoint = "http://localhost";
       const dynamoDB = new DynamoDB({
         endpoint: endpoint,
         region: "aws-region",
@@ -197,7 +198,7 @@ describe("DynamoDB", () => {
   describe("update", () => {
     it("Should update the item with successfully", async (): Promise<void> => {
       // Given
-      const endpoint: string = "http://localhost";
+      const endpoint = "http://localhost";
       const messageId = "uuid-v4";
       const ttl = 10;
       const now = Math.floor(Date.now() / 1000);
