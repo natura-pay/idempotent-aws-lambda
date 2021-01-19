@@ -102,12 +102,12 @@ describe("idempotency-sqs-wrapper", () => {
       await handler(event, context);
 
       // Then
+      expect(internalHandler).toHaveBeenCalledWith(expectedEvent, context);
       expect(mockIsProcessing).toBeCalledWith(messageId);
-      expect(mockDeleteFunction).toBeCalledWith({
+      expect(mockDeleteFunction).not.toBeCalledWith({
         QueueUrl: endpointSQS,
         ReceiptHandle: receiptHandle,
       });
-      expect(internalHandler).toHaveBeenCalledWith(expectedEvent, context);
     });
 
     it("Should apply the default TTL", async () => {
