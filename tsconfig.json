@@ -13,5 +13,5 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src/*"],
-  "exclude": ["test", "node_modules", "dist", "examples", "__mocks__"]
+  "exclude": ["node_modules", "dist", "examples", "__mocks__"]
 }
