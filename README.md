@@ -162,6 +162,12 @@ module.exports.sqsHandler = idempotencySQSWrapper({
 
 The result in the table will be a recod, which the key will be: `1234567890SENT`.
 
+## Observations
+
+- For Dynamodb provider we are using the method `transactWrite` to handle idempotency. This has two trade offs shoud be considered before adopting this library
+  - The operation cost's is doubled.
+  - The time period considered from idempotency **is, at minimum, 10 minutos**.
+
 ## Support
 
 Tested in Node.js 10-12.
