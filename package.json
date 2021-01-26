@@ -7,7 +7,7 @@
   "files": [
     "LICENSE",
     "README.md",
-    "dist/src"
+    "dist"
   ],
   "scripts": {
     "build": "npm run clean && tsc",
