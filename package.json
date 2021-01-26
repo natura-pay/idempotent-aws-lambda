@@ -12,7 +12,6 @@
   "scripts": {
     "build": "npm run clean && tsc",
     "tsc": "tsc",
-    "prepare": "npm run build",
     "clean": "rimraf dist",
     "lint": "eslint . --ext ts",
     "pretest": "cross-env NODE_ENV=test npm run build && npm run lint",
