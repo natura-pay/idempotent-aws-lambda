@@ -1,6 +1,6 @@
 {
   "name": "@natura-pay/idempotent-aws-lambda",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "A fast way to turn your aws lambda idempotent.",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -10,8 +10,9 @@
     "dist/src"
   ],
   "scripts": {
-    "build": "npm run clean && tsc && copyfiles -u 1 src/**/*.json dist",
-    "prepare": "tsc",
+    "build": "npm run clean && tsc",
+    "tsc": "tsc",
+    "prepare": "build",
     "clean": "rimraf dist",
     "lint": "eslint . --ext ts",
     "pretest": "cross-env NODE_ENV=test npm run build && npm run lint",
