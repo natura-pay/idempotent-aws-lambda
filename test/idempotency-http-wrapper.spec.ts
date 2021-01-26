@@ -1,6 +1,5 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import faker from "faker";
-import nock from "nock";
 import { idempotencyHttpWrapper, Providers } from "../src";
 
 const mockIsProcessing = jest.fn();
@@ -24,18 +23,6 @@ describe("idempotency-http-wrapper", () => {
 
   beforeEach(() => {
     jest.spyOn(Date, "now").mockReturnValue(mockNow);
-    nock.disableNetConnect();
-  });
-
-  beforeAll(() => {
-    nock.recorder.rec({
-      output_objects: true,
-    });
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
-    nock.enableNetConnect();
   });
 
   describe("dynamoDB", () => {

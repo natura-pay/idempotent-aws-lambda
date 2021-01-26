@@ -18,18 +18,6 @@ jest.mock("../src/providers/dynamoDB", () => {
 });
 
 describe("idempotency-sqs-wrapper", () => {
-  const mockNow = Date.now();
-
-  beforeEach(() => {
-    jest.spyOn(Date, "now").mockReturnValue(mockNow);
-    // nock.disableNetConnect();
-  });
-
-  afterEach(() => {
-    // nock.cleanAll();
-    // nock.enableNetConnect();
-  });
-
   describe("dynamoDB", () => {
     it("Should pass all the records if they aren't executed yet", async () => {
       // Given
